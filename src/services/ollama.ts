@@ -1,6 +1,7 @@
-import type { Message } from "../types/message"
-
-export async function askOllama(prompt: string): Promise<Message> {
+export async function askOllamaStream(
+  prompt: string,
+  onChunk: (chunk: string) => void
+): Promise<void> {
   const res = await fetch('http://localhost:11434/api/chat', {
     method: 'POST',
     headers: {
@@ -8,7 +9,7 @@ export async function askOllama(prompt: string): Promise<Message> {
     },
     body: JSON.stringify({
       model: 'llama3',
-      stream: false,
+      stream: true,
       messages: [
         {
           role: 'user',
@@ -18,10 +19,38 @@ export async function askOllama(prompt: string): Promise<Message> {
     })
   })
 
-  const data = await res.json()
+  if (!res.body) {
+    throw new Error('No se recibió respuesta del servidor')
+  }
 
-  return {
-    role: 'assistant',
-    content: data.message.content
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+
+    const lines = buffer.split('\n')
+
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (!line.trim()) continue
+
+      try {
+        const json = JSON.parse(line)
+
+        if (json.message?.content) {
+          onChunk(json.message.content)
+        }
+      } catch {
+        
+      }
+    }
   }
 }

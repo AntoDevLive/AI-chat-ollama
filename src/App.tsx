@@ -4,7 +4,7 @@ import ChatHeader from './components/ChatHeader'
 import ChatMessages from './components/ChatMessages'
 import ChatInput from './components/ChatInput'
 
-import { askOllama } from './services/ollama'
+import { askOllamaStream } from './services/ollama'
 import type { Message } from './types/message'
 
 function App() {
@@ -19,7 +19,7 @@ function App() {
       content: prompt
     }
 
-    const loadingMessage: Message = {
+    const assistantMessage: Message = {
       role: 'assistant',
       content: '',
       loading: true
@@ -28,7 +28,7 @@ function App() {
     setMessages(prev => [
       ...prev,
       userMessage,
-      loadingMessage
+      assistantMessage
     ])
 
     const currentPrompt = prompt
@@ -36,18 +36,21 @@ function App() {
     setPrompt('')
 
     try {
-      const assistantMessage = await askOllama(currentPrompt)
-
-      setMessages(prev =>
-        prev.map((message, index) =>
-          index === prev.length - 1
-            ? {
-              role: 'assistant',
-              content: assistantMessage.content,
-              loading: false
-            }
-            : message
-        )
+      await askOllamaStream(
+        currentPrompt,
+        (chunk: string) => {
+          setMessages(prev =>
+            prev.map((message, index) =>
+              index === prev.length - 1
+                ? {
+                  ...message,
+                  loading: false,
+                  content: message.content + chunk
+                }
+                : message
+            )
+          )
+        }
       )
     } catch (error) {
       console.error(error)
@@ -67,7 +70,7 @@ function App() {
   }
 
   return (
-    <section className='flex flex-col justify-center items-center w-120 m-auto'>
+    <section className='flex flex-col justify-center items-center w-full max-w-3xl mx-auto px-2 sm:px-4'>
       <ChatHeader isChatStarted={messages.length > 0} />
 
       <ChatMessages messages={messages} />
