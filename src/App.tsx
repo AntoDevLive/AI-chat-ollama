@@ -70,7 +70,7 @@ function App() {
   }
 
   return (
-    <section className='flex flex-col justify-center items-center w-full max-w-3xl mx-auto px-2 sm:px-4'>
+    <section className='flex flex-col justify-center items-center w-3xl mx-auto px-2 sm:px-4'>
       <ChatHeader isChatStarted={messages.length > 0} />
 
       <ChatMessages messages={messages} />
